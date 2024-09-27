@@ -60,9 +60,6 @@ int xdp_dodger(struct xdp_md *ctx)
 	__u32 dst = ntohl(dst_ip);
 	struct data_t event = {src, dst};
 	events.perf_submit(ctx, &event, sizeof(event)); //xdp de tukaeru?
-	//int ret = bpf_perf_event_output(ctx, &events, BPF_F_CURRENT_CPU, &event, sizeof(event));
-	//if (ret)
-	//	bpf_trace_printk("hello");
 
     ip->saddr = dst_ip;
     ip->daddr = src_ip;
@@ -77,8 +74,6 @@ int xdp_dodger(struct xdp_md *ctx)
     icmp->type = ICMP_REPLY; //repyl=0
     csum_replace2(&icmp->checksum, ICMP_REQUEST, ICMP_REPLY);
 
-    //bpf_redirect(ctx->ingress_ifindex, 0); // if other interface?
-    //bpf_redirect(2, 0);
     return XDP_TX;
 }
 
