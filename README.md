@@ -1,8 +1,14 @@
 # dodger-ebpf
-eBPF powered dodger game!\
+eBPF powered dodger game!
+
 You avoid fallen objects by moving starfish.\
 player = starfish\
 baddie = fish (fallen objects)
+
+Baddie size depends on ip->protocol type.\
+ICMP = smallest\
+TCP = medium\
+UDP = biggest
 
 > [!IMPORTANT]
 > baddie is generated upon packet arrival.\
