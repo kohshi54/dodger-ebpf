@@ -46,12 +46,24 @@ def drawText(text, font, surface, x, y):
 # new enenmy = arrived packet num captured on xdp
 def getNewBaddieNum(bpfo):
 	cnt_sum = 0
-	for addr,cnt in bpfo.get_table("packet_count").items():	
-		addr = int.from_bytes(addr, byteorder='big')
+	#for addr,cnt in bpfo.get_table("ip_count").items():
+	#	addr = int.from_bytes(addr, byteorder='big')
+	#	cnt = int.from_bytes(cnt, byteorder='little')
+	#	print(f"{addr>>24 & 0xFF}.{addr>>16 & 0xFF}.{addr>>8 & 0xFF}.{addr & 0xFF}={cnt}")
+	#	cnt_sum += cnt
+	#print(f"{cnt_sum=}")
+	#bpfo.get_table("ip_count").clear()
+	for ip_type,cnt in bpfo.get_table("packet_count").items():
+		ip_type = int.from_bytes(ip_type, byteorder='little')
 		cnt = int.from_bytes(cnt, byteorder='little')
-		print(f"{addr>>24 & 0xFF}.{addr>>16 & 0xFF}.{addr>>8 & 0xFF}.{addr & 0xFF}={cnt}")
+		print(f"{ip_type=}, {cnt=}")
+		if ip_type == 1:
+			print(f"icmptcnt={cnt}")
+		elif ip_type == 6:
+			print(f"tcpcnt={cnt}")
+		elif ip_type == 17:
+			print(f"udpcnt={cnt}")
 		cnt_sum += cnt
-	print(f"{cnt_sum=}")
 	bpfo.get_table("packet_count").clear()
 	return cnt_sum
 
@@ -83,7 +95,7 @@ playerRect = playerImage.get_rect()
 baddieImage = pygame.image.load('baddie.png')
 
 # show the "Start" screen
-drawText('Dodger', font, windowSurface, (WINDOWWIDTH / 3), (WINDOWHEIGHT / 3))
+drawText('eBPF-Dodger', font, windowSurface, (WINDOWWIDTH / 3), (WINDOWHEIGHT / 3))
 drawText('Press a key to start.', font, windowSurface, (WINDOWWIDTH / 3) - 30, (WINDOWHEIGHT / 3) + 50)
 pygame.display.update()
 waitForPlayerToPressKey()

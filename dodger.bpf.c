@@ -5,12 +5,15 @@
 #include <linux/bpf.h>
 //#include <bpf/bpf_helpers.h>
 
-#define ICMP_PROTO 1
+#define ICMP_PROTO 0x01
+#define TCP_PROTO 0x06
+#define UDP_PROTO 0x11
 #define ICMP_REQUEST 8
 #define ICMP_REPLY 0
 //#define IP_CSUM_OFF (ETH_HLEN + offsetof(struct iphdr, check))
 
-BPF_HASH(packet_count, u32, u32);
+BPF_HASH(packet_count, u8, u32);
+BPF_HASH(ip_count, u32, u32);
 
 struct data_t {
 	__u32 saddr;
@@ -28,6 +31,26 @@ int xdp_dodger(struct xdp_md *ctx)
     struct iphdr *ip = (void *)eth + sizeof(struct ethhdr);
     if ((void *)ip + sizeof(struct iphdr) > data_end)
         return XDP_PASS;
+
+	if ((ip->protocol != ICMP_PROTO) && (ip->protocol != TCP_PROTO) && (ip->protocol != UDP_PROTO))
+		return XDP_PASS;
+
+    __be32 src_ip = ip->saddr;
+    __be32 dst_ip = ip->daddr;
+	u32 zero = 0;
+	u32 *count = ip_count.lookup_or_try_init(&src_ip, &zero);
+	if (count) {
+		(*count)++;
+		ip_count.update(&src_ip, count);
+	}
+
+	//u32 proto_type = ip->protocol;
+	u32 *type_count = packet_count.lookup_or_try_init(&ip->protocol, &zero);
+	if (type_count) {
+		(*type_count)++;
+		ip_count.update(&ip->protocol, type_count);
+	}
+
     if (ip->protocol != ICMP_PROTO)
         return XDP_PASS;
     struct icmphdr *icmp = (void *)ip + (ip->ihl * 4);
@@ -47,14 +70,14 @@ int xdp_dodger(struct xdp_md *ctx)
     memcpy(eth->h_dest, src_mac, 6);
 
 /* swap l3 */
-    __be32 src_ip = ip->saddr;
-    __be32 dst_ip = ip->daddr;
-	u32 zero = 0;
-	u32 *count = packet_count.lookup_or_try_init(&src_ip, &zero);
-	if (count) {
-		(*count)++;	
-		packet_count.update(&src_ip, count);
-	}
+    //__be32 src_ip = ip->saddr;
+    //__be32 dst_ip = ip->daddr;
+	//u32 zero = 0;
+	//u32 *count = ip_count.lookup_or_try_init(&src_ip, &zero);
+	//if (count) {
+	//	(*count)++;
+	//	ip_count.update(&src_ip, count);
+	//}
 
 	__u32 src = ntohl(src_ip);
 	__u32 dst = ntohl(dst_ip);
