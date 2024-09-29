@@ -45,31 +45,36 @@ def drawText(text, font, surface, x, y):
 
 # new enenmy = arrived packet num captured on xdp
 def getNewBaddieNum(bpfo):
-	cnt_sum = 0
-	#for addr,cnt in bpfo.get_table("ip_count").items():
-	#	addr = int.from_bytes(addr, byteorder='big')
-	#	cnt = int.from_bytes(cnt, byteorder='little')
-	#	print(f"{addr>>24 & 0xFF}.{addr>>16 & 0xFF}.{addr>>8 & 0xFF}.{addr & 0xFF}={cnt}")
-	#	cnt_sum += cnt
-	#print(f"{cnt_sum=}")
-	#bpfo.get_table("ip_count").clear()
-	for ip_type,cnt in bpfo.get_table("packet_count").items():
-		ip_type = int.from_bytes(ip_type, byteorder='little')
-		cnt = int.from_bytes(cnt, byteorder='little')
-		print(f"{ip_type=}, {cnt=}")
-		if ip_type == 1:
-			print(f"icmptcnt={cnt}")
-		elif ip_type == 6:
-			print(f"tcpcnt={cnt}")
-		elif ip_type == 17:
-			print(f"udpcnt={cnt}")
-		cnt_sum += cnt
-	bpfo.get_table("packet_count").clear()
-	return cnt_sum
+    cnt_sum = 0
+    #for addr,cnt in bpfo.get_table("ip_count").items():
+    #    addr = int.from_bytes(addr, byteorder='big')
+    #    cnt = int.from_bytes(cnt, byteorder='little')
+    #    print(f"{addr>>24 & 0xFF}.{addr>>16 & 0xFF}.{addr>>8 & 0xFF}.{addr & 0xFF}={cnt}")
+    #    cnt_sum += cnt
+    #print(f"{cnt_sum=}")
+    #bpfo.get_table("ip_count").clear()
+    icmp_cnt = tcp_cnt = udp_cnt = 0
+    for ip_type,cnt in bpfo.get_table("packet_count").items():
+        ip_type = int.from_bytes(ip_type, byteorder='little')
+        cnt = int.from_bytes(cnt, byteorder='little')
+        print(f"{ip_type=}, {cnt=}")
+        if ip_type == 1:
+            icmp_cnt = cnt
+            print(f"{icmp_cnt=}")
+        elif ip_type == 6:
+            tcp_cnt = cnt
+            print(f"{tcp_cnt=}")
+        elif ip_type == 17:
+            udp_cnt = cnt
+            print(f"{udp_cnt=}")
+        cnt_sum += cnt
+    bpfo.get_table("packet_count").clear()
+    return (cnt_sum, icmp_cnt, tcp_cnt, udp_cnt)
+    #return cnt_sum
 
 #def print_event(cpu, data, size):
-#	event = ct.cast(data, ct.POINTER(Data)).contents
-#	print(f"ping from {(event.saddr>>24) & 0xFF}.{(event.saddr>>16 & 0xFF)}.{(event.saddr>>8 & 0xFF)}.{(event.saddr & 0xFF)}")
+#    event = ct.cast(data, ct.POINTER(Data)).contents
+#    print(f"ping from {(event.saddr>>24) & 0xFF}.{(event.saddr>>16 & 0xFF)}.{(event.saddr>>8 & 0xFF)}.{(event.saddr & 0xFF)}")
 
 # set up ebpf
 device = "enp6s18"
@@ -142,9 +147,45 @@ while True:
                     moveDown = False
 
         # Add new baddies at the top of the screen, if needed.
-        #bpfo.perf_buffer_poll(timeout=1);
-        for _ in range(getNewBaddieNum(bpfo)): #yukuyuku ha packet type de rect size change
-            baddieSize = random.randint(BADDIEMINSIZE, BADDIEMAXSIZE)
+        ##bpfo.perf_buffer_poll(timeout=1);
+        #for _ in range(getNewBaddieNum(bpfo)): #yukuyuku ha packet type de rect size change
+        #    baddieSize = random.randint(BADDIEMINSIZE, BADDIEMAXSIZE)
+        #    newBaddie = {'rect': pygame.Rect(random.randint(0, WINDOWWIDTH-baddieSize), 0 - baddieSize, baddieSize, baddieSize),
+        #                'speed': random.randint(BADDIEMINSPEED, BADDIEMAXSPEED),
+        #                'surface':pygame.transform.scale(baddieImage, (baddieSize, baddieSize)),
+        #                }
+        #    baddies.append(newBaddie)
+
+        cntsum,icmp,tcp,udp = getNewBaddieNum(bpfo)
+        #for _ in range(cntsum):
+        #    baddieSize = 10
+        #    newBaddie = {'rect': pygame.Rect(random.randint(0, WINDOWWIDTH-baddieSize), 0 - baddieSize, baddieSize, baddieSize),
+        #                'speed': random.randint(BADDIEMINSPEED, BADDIEMAXSPEED),
+        #                'surface':pygame.transform.scale(baddieImage, (baddieSize, baddieSize)),
+        #                }
+        #    baddies.append(newBaddie)
+
+        for _ in range(icmp):
+            #baddieSize = random.randint(BADDIEMINSIZE, BADDIEMAXSIZE)
+            baddieSize = 10
+            newBaddie = {'rect': pygame.Rect(random.randint(0, WINDOWWIDTH-baddieSize), 0 - baddieSize, baddieSize, baddieSize),
+                        'speed': random.randint(BADDIEMINSPEED, BADDIEMAXSPEED),
+                        'surface':pygame.transform.scale(baddieImage, (baddieSize, baddieSize)),
+                        }
+            baddies.append(newBaddie)
+
+        for _ in range(tcp):
+            #baddieSize = random.randint(BADDIEMINSIZE, BADDIEMAXSIZE)
+            baddieSize = 20
+            newBaddie = {'rect': pygame.Rect(random.randint(0, WINDOWWIDTH-baddieSize), 0 - baddieSize, baddieSize, baddieSize),
+                        'speed': random.randint(BADDIEMINSPEED, BADDIEMAXSPEED),
+                        'surface':pygame.transform.scale(baddieImage, (baddieSize, baddieSize)),
+                        }
+            baddies.append(newBaddie)
+
+        for _ in range(udp):
+            #baddieSize = random.randint(BADDIEMINSIZE, BADDIEMAXSIZE)
+            baddieSize = 40
             newBaddie = {'rect': pygame.Rect(random.randint(0, WINDOWWIDTH-baddieSize), 0 - baddieSize, baddieSize, baddieSize),
                         'speed': random.randint(BADDIEMINSPEED, BADDIEMAXSPEED),
                         'surface':pygame.transform.scale(baddieImage, (baddieSize, baddieSize)),
