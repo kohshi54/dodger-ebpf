@@ -93,7 +93,6 @@
 	                bubbles[i].x + bubbles[i].width > baddies[j].x &&
 	                bubbles[i].y < baddies[j].y + baddies[j].height &&
 	                bubbles[i].y + bubbles[i].height > baddies[j].y) {
-			//hitMessage = "You bastered " + baddies[i].type + "!";
 			console.log(baddies[j].type)
 			hitMessage = "You bastered " + ipproto.get(baddies[j].type) + "!";
 			messageDisplayTime = Date.now();
@@ -108,7 +107,7 @@
 	}
 
 
-    function addBaddie(type) {
+    function addBaddie(type, packet_len) {
         //const size = Math.floor(Math.random() * 40) + 10;
         let size;
 	if (type == 6) { //tcp
@@ -123,7 +122,7 @@
 	console.log(size)
         const speed = Math.floor(Math.random() * 8) + 1; //packetbytes de kimeru?
         const x = Math.floor(Math.random() * (canvas.width - size));
-        baddies.push({ width: size, height: size, x, y: -size, speed, type});
+        baddies.push({ width: size, height: size, x, y: -size, speed, type, packet_len});
     }
 
     function movePlayer() {
@@ -137,6 +136,11 @@
         for (let i = 0; i < baddies.length; i++) {
             baddies[i].y += baddies[i].speed;
         }
+        offscreenbaddies = baddies.filter(b => b.y > canvas.height);
+	for (let i = 0; i < offscreenbaddies.length; i++) {
+		console.log(offscreenbaddies[i].packet_len);
+		score += offscreenbaddies[i].packet_len;
+	}
         baddies = baddies.filter(b => b.y < canvas.height);
     }
 
@@ -197,14 +201,14 @@
             return;
         }
 
-        score++;
+        //score++;
         draw();
         setTimeout(() => requestAnimationFrame(gameLoop), 1000 / FPS);
     }
 
     function gameOver(rank) {
         drawText("GAME OVER", canvas.width / 3, canvas.height / 3, 48, "red");
-        drawText(`Your Score: ${currentScore}`, canvas.width / 3 - 40, canvas.height / 3 + 50, 24, "white");
+        drawText(`Your score: ${currentScore} bytes!`, canvas.width / 3 - 40, canvas.height / 3 + 50, 24, "white");
         drawText(`Rank: ${rank} / ${highScores.length}`, canvas.width / 3 - 40, canvas.height / 3 + 100, 24, "yellow");
 
         drawText("Top Scores:", canvas.width / 3 - 40, canvas.height / 3 + 150, 24, "white");
@@ -238,8 +242,9 @@
         console.log('Packet received. Adding a new baddie.');
 	//console.log(msg)
 	const packet_type = msg.data.type
+	const packet_len = msg.data.type
 	console.log(packet_type)
-        addBaddie(packet_type);
+        addBaddie(packet_type, packet_len);
     });
 
     window.addEventListener('keydown', (e) => {
