@@ -41,9 +41,12 @@
     playerImage.src = 'static/images/player.png';
     let baddieImage = new Image();
     baddieImage.src = 'static/images/baddie.png';
+    let bubbleImage = new Image();
+    bubbleImage.src = 'static/images/bubble.png';
 
     playerImage.onerror = () => console.error('Failed to load player.png');
     baddieImage.onerror = () => console.error('Failed to load baddie.png');
+    bubbleImage.onerror = () => console.error('Failed to load bubble.png');
 
     let player = {
         width: 40,
@@ -57,6 +60,43 @@
     };
     let baddies = [];
     let score = 0;
+	let bubbles = [];
+	const BUBBLESPEED = 10;
+
+	function shootBubble() {
+	    const bubble = {
+	        x: player.x + player.width / 2 - 5,
+	        y: player.y,
+	        width: 10,
+	        height: 20,
+	        speed: BUBBLESPEED
+	    };
+	    bubbles.push(bubble);
+	}
+	function moveBubbles() {
+	    for (let i = 0; i < bubbles.length; i++) {
+	        bubbles[i].y -= bubbles[i].speed;
+	    }
+	    bubbles = bubbles.filter(b => b.y + b.height > 0); // Remove off-screen bubbles
+	}
+
+	function detectBubbleCollision() {
+	    for (let i = bubbles.length - 1; i >= 0; i--) {
+	        for (let j = baddies.length - 1; j >= 0; j--) {
+	            if (bubbles[i].x < baddies[j].x + baddies[j].width &&
+	                bubbles[i].x + bubbles[i].width > baddies[j].x &&
+	                bubbles[i].y < baddies[j].y + baddies[j].height &&
+	                bubbles[i].y + bubbles[i].height > baddies[j].y) {
+	                // Remove both the bullet and the baddie
+	                bubbles.splice(i, 1);
+	                baddies.splice(j, 1);
+	                score += 10; // Increment score for hitting a baddie
+	                break;
+	            }
+	        }
+	    }
+	}
+
 
     function addBaddie(type) {
         //const size = Math.floor(Math.random() * 40) + 10;
@@ -73,7 +113,7 @@
 	console.log(size)
         const speed = Math.floor(Math.random() * 8) + 1; //packetbytes de kimeru?
         const x = Math.floor(Math.random() * (canvas.width - size));
-        baddies.push({ width: size, height: size, x, y: -size, speed });
+        baddies.push({ width: size, height: size, x, y: -size, speed, type});
     }
 
     function movePlayer() {
@@ -106,6 +146,11 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
 
+        for (let i = 0; i < bubbles.length; i++) {
+            const b = bubbles[i];
+            ctx.drawImage(bubbleImage, b.x, b.y, b.width, b.height);
+        }
+
         for (let i = 0; i < baddies.length; i++) {
             const b = baddies[i];
             ctx.drawImage(baddieImage, b.x, b.y, b.width, b.height);
@@ -119,7 +164,9 @@
 
     function gameLoop() {
         movePlayer();
+	moveBubbles();
         moveBaddies();
+	detectBubbleCollision();
 
         if (detectCollision()) {
             if (score > topScore) topScore = score;
@@ -181,6 +228,7 @@
         if (e.key === 'ArrowRight') player.moveRight = true;
         if (e.key === 'ArrowUp') player.moveUp = true;
         if (e.key === 'ArrowDown') player.moveDown = true;
+	if (e.key === ' ') shootBubble();
     });
 
     window.addEventListener('keyup', (e) => {
