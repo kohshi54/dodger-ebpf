@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dodger Game with WebSocket</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            background-color: black;
+        }
+    </style>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const FPS = 40;
+    const PLAYERMOVERATE = 5;
+    let topScore = 0;
+    let highScores = [];
+    let currentScore = 0;
+
+    const socket = io.connect('http://' + document.domain + ':' + location.port);
+
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let playerImage = new Image();
+    playerImage.src = 'static/images/player.png';
+    let baddieImage = new Image();
+    baddieImage.src = 'static/images/baddie.png';
+
+    playerImage.onerror = () => console.error('Failed to load player.png');
+    baddieImage.onerror = () => console.error('Failed to load baddie.png');
+
+    let player = {
+        width: 40,
+        height: 40,
+        x: canvas.width / 2 - 20,
+        y: canvas.height - 70,
+        moveLeft: false,
+        moveRight: false,
+        moveUp: false,
+        moveDown: false
+    };
+    let baddies = [];
+    let score = 0;
+
+    function addBaddie() {
+        const size = Math.floor(Math.random() * 40) + 10;
+        const speed = Math.floor(Math.random() * 8) + 1;
+        const x = Math.floor(Math.random() * (canvas.width - size));
+        baddies.push({ width: size, height: size, x, y: -size, speed });
+    }
+
+    function movePlayer() {
+        if (player.moveLeft && player.x > 0) player.x -= PLAYERMOVERATE;
+        if (player.moveRight && player.x + player.width < canvas.width) player.x += PLAYERMOVERATE;
+        if (player.moveUp && player.y > 0) player.y -= PLAYERMOVERATE;
+        if (player.moveDown && player.y + player.height < canvas.height) player.y += PLAYERMOVERATE;
+    }
+
+    function moveBaddies() {
+        for (let i = 0; i < baddies.length; i++) {
+            baddies[i].y += baddies[i].speed;
+        }
+        baddies = baddies.filter(b => b.y < canvas.height);
+    }
+
+    function detectCollision() {
+        for (let i = 0; i < baddies.length; i++) {
+            if (player.x < baddies[i].x + baddies[i].width &&
+                player.x + player.width > baddies[i].x &&
+                player.y < baddies[i].y + baddies[i].height &&
+                player.y + player.height > baddies[i].y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
+
+        for (let i = 0; i < baddies.length; i++) {
+            const b = baddies[i];
+            ctx.drawImage(baddieImage, b.x, b.y, b.width, b.height);
+        }
+
+        ctx.fillStyle = "white";
+        ctx.font = "24px Arial";
+        ctx.fillText(`Score: ${score}`, 10, 30);
+        ctx.fillText(`Top Score: ${topScore}`, 10, 60);
+    }
+
+    function gameLoop() {
+        movePlayer();
+        moveBaddies();
+
+        if (detectCollision()) {
+            if (score > topScore) topScore = score;
+            highScores.push(score);
+            highScores.sort((a, b) => b - a);
+            currentScore = score;
+            let rank = highScores.indexOf(currentScore) + 1;
+            gameOver(rank);
+            return;
+        }
+
+        score++;
+        draw();
+        setTimeout(() => requestAnimationFrame(gameLoop), 1000 / FPS);
+    }
+
+    function gameOver(rank) {
+        drawText("GAME OVER", canvas.width / 3, canvas.height / 3, 48, "red");
+        drawText(`Your Score: ${currentScore}`, canvas.width / 3 - 40, canvas.height / 3 + 50, 24, "white");
+        drawText(`Rank: ${rank} / ${highScores.length}`, canvas.width / 3 - 40, canvas.height / 3 + 100, 24, "yellow");
+
+        drawText("Top Scores:", canvas.width / 3 - 40, canvas.height / 3 + 150, 24, "white");
+        for (let i = 0; i < Math.min(5, highScores.length); i++) {
+            let color = (i + 1 === rank) ? "yellow" : "white";
+            drawText(`${i + 1}. ${highScores[i]}`, canvas.width / 3 - 40, canvas.height / 3 + 180 + (i * 30), 20, color);
+        }
+
+        drawText("Press any key (except arrows) to restart", canvas.width / 3 - 60, canvas.height / 3 + 350, 24, "red");
+
+        window.addEventListener('keydown', handleRestart, { once: true });
+    }
+
+    function handleRestart(e) {
+        if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+            window.addEventListener('keydown', handleRestart, { once: true });
+        } else {
+            restartGame();
+        }
+    }
+
+    function restartGame() {
+        score = 0;
+        baddies = [];
+        player.x = canvas.width / 2 - 20;
+        player.y = canvas.height - 70;
+        gameLoop();
+    }
+
+    socket.on('packet', () => {
+        console.log('Packet received. Adding a new baddie.');
+        addBaddie();
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') player.moveLeft = true;
+        if (e.key === 'ArrowRight') player.moveRight = true;
+        if (e.key === 'ArrowUp') player.moveUp = true;
+        if (e.key === 'ArrowDown') player.moveDown = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft') player.moveLeft = false;
+        if (e.key === 'ArrowRight') player.moveRight = false;
+        if (e.key === 'ArrowUp') player.moveUp = false;
+        if (e.key === 'ArrowDown') player.moveDown = false;
+    });
+
+    drawText("Press any key to start", canvas.width / 3, canvas.height / 2, 32);
+    window.addEventListener('keydown', () => {
+        gameLoop();
+    }, { once: true });
+
+    function drawText(text, x, y, size = 24, color = "white") {
+        ctx.fillStyle = color;
+        ctx.font = `${size}px Arial`;
+        ctx.fillText(text, x, y);
+    }
+</script>
+</body>
+</html>
+
