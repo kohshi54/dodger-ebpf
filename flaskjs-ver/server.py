@@ -17,6 +17,7 @@ def packet_callback(cpu, data, size):
         "src_ip": socket.inet_ntoa(struct.pack("<I", packet_info.src_ip)),
         "dest_ip": socket.inet_ntoa(struct.pack("<I", packet_info.dest_ip)),
         "packet_len": packet_info.packet_len,
+        "type": packet_info.type,
         "timestamp": time.time()
     })
     #print(socket.inet_ntoa(struct.pack("<I", packet_info.src_ip)))

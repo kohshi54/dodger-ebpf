@@ -6,6 +6,7 @@ struct packet_info_t {
     u32 src_ip;
     u32 dest_ip;
     u16 packet_len;
+    u8 type; // icmp/tcp/udp
 };
 
 BPF_PERF_OUTPUT(events);
@@ -28,8 +29,8 @@ int packet_monitor(struct xdp_md *ctx) {
 */
 
 	//bpf_trace_printk("packet arrived");
-	if (ip->protocol != 0x01)
-		return XDP_PASS;
+//	if (ip->protocol != 0x01)
+//		return XDP_PASS;
 
 	bpf_trace_printk("icmp hello");
     //if (eth->h_proto != __constant_htons(ETH_P_IP))
@@ -41,6 +42,7 @@ int packet_monitor(struct xdp_md *ctx) {
     pkt.src_ip = ip->saddr;
     pkt.dest_ip = ip->daddr;
     pkt.packet_len = (u16)(ctx->data_end - ctx->data);
+    pkt.type = ip->protocol;
 
     events.perf_submit(ctx, &pkt, sizeof(pkt));
     return XDP_PASS;
