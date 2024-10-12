@@ -58,9 +58,20 @@
     let baddies = [];
     let score = 0;
 
-    function addBaddie() {
-        const size = Math.floor(Math.random() * 40) + 10;
-        const speed = Math.floor(Math.random() * 8) + 1;
+    function addBaddie(type) {
+        //const size = Math.floor(Math.random() * 40) + 10;
+        let size;
+	if (type == 6) { //tcp
+        	size = 30;
+	} else if (type == 17) { //udp
+		size = 40;
+	} else if (type == 1) { //icmp
+		size = 10;
+	} else {
+		size = 10
+	}
+	console.log(size)
+        const speed = Math.floor(Math.random() * 8) + 1; //packetbytes de kimeru?
         const x = Math.floor(Math.random() * (canvas.width - size));
         baddies.push({ width: size, height: size, x, y: -size, speed });
     }
@@ -157,9 +168,12 @@
         gameLoop();
     }
 
-    socket.on('packet', () => {
+    socket.on('packet', (msg) => {
         console.log('Packet received. Adding a new baddie.');
-        addBaddie();
+	//console.log(msg)
+	const packet_type = msg.data.type
+	console.log(packet_type)
+        addBaddie(packet_type);
     });
 
     window.addEventListener('keydown', (e) => {
