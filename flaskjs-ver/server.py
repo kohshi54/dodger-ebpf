@@ -8,7 +8,7 @@ import struct
 
 packets = []
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 def packet_callback(cpu, data, size):
     packet_info = bpf["events"].event(data)
@@ -46,6 +46,10 @@ def fetch_data_from_host():
 def index():
     return render_template('index.html')
 
+@app.route('/monitor')
+def show_monitor():
+    return render_template('monitor.html')
+
 # サーバー起動時にホストからデータを取得するスレッドを起動
 @socketio.on('connect')
 def handle_connect():
@@ -56,9 +60,10 @@ if __name__ == '__main__':
     try:
         bpf = BPF(src_file="sniffer.bpf.c")
         function_xdp = bpf.load_func("packet_monitor", BPF.XDP)
-        device = "enp6s18"
+        device = "enp1s0f0"
         bpf.attach_xdp(device, fn=function_xdp)
-        socketio.run(app, host='0.0.0.0', port=5000)
+        socketio.run(app, host='0.0.0.0', port=443, ssl_context=('cert/cert.pem', 'cert/key.pem'))
+        #socketio.run(app, host='0.0.0.0', port=5000)
     finally:
         print("detaching ebpf program")
         bpf.remove_xdp(device, 0)

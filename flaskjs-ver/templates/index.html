@@ -28,7 +28,7 @@
     let highScores = [];
     let currentScore = 0;
 
-    const socket = io.connect('http://' + document.domain + ':' + location.port);
+    const socket = io.connect('https://' + document.domain + ':' + location.port);
 
     function resizeCanvas() {
         canvas.width = window.innerWidth;

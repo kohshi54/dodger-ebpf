@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eBPF Packet Monitor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+
+</head>
+<body>
+    <h1>WebSocket Data</h1>
+    <p id="data">Waiting for data...</p>
+
+    <h1>eBPF Packet Monitor</h1>
+    <table id="packetTable">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Source IP</th>
+                <th>Destination IP</th>
+                <th>Packet Length</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script type="text/javascript">
+        var socket = io.connect('https://' + document.domain + ':' + location.port);
+        socket.on('new_data', function(msg) {
+            console.log('Received data: ' + msg.data);
+            document.getElementById('data').innerHTML = 'New Data: ' + msg.data;
+
+        });
+		socket.on('packet', function(msg) {
+		    const packet = msg.data
+			console.log(msg.data)
+            const table = document.getElementById("packetTable").getElementsByTagName("tbody")[0];
+
+            const newRow = table.insertRow();
+            newRow.insertCell(0).innerText = new Date(packet.timestamp * 1000).toLocaleTimeString();
+            newRow.insertCell(1).innerText = packet.src_ip;
+            newRow.insertCell(2).innerText = packet.dest_ip;
+            newRow.insertCell(3).innerText = packet.packet_len;
+		});
+    </script>
+</body>
+</html>
+
+
