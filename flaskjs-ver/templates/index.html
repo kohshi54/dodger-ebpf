@@ -27,6 +27,12 @@
     let topScore = 0;
     let highScores = [];
     let currentScore = 0;
+	let hitMessage = "";
+	let messageDisplayTime = 0;
+	const MESSAGE_DURATION = 300; //0.3s
+
+	const ipproto = new Map([[1, "icmp"], [6,"tcp"], [17, "udp"]]);
+
 
     const socket = io.connect('https://' + document.domain + ':' + location.port);
 
@@ -87,6 +93,10 @@
 	                bubbles[i].x + bubbles[i].width > baddies[j].x &&
 	                bubbles[i].y < baddies[j].y + baddies[j].height &&
 	                bubbles[i].y + bubbles[i].height > baddies[j].y) {
+			//hitMessage = "You bastered " + baddies[i].type + "!";
+			console.log(baddies[j].type)
+			hitMessage = "You bastered " + ipproto.get(baddies[j].type) + "!";
+			messageDisplayTime = Date.now();
 	                // Remove both the bullet and the baddie
 	                bubbles.splice(i, 1);
 	                baddies.splice(j, 1);
@@ -160,6 +170,15 @@
         ctx.font = "24px Arial";
         ctx.fillText(`Score: ${score}`, 10, 30);
         ctx.fillText(`Top Score: ${topScore}`, 10, 60);
+
+        // Display hit message if within duration
+	    if (hitMessage && Date.now() - messageDisplayTime < MESSAGE_DURATION) {
+	        ctx.font = "32px Arial";
+	        ctx.fillStyle = "yellow";
+	        ctx.fillText(hitMessage, canvas.width / 2 - 40, canvas.height / 2);
+	    } else {
+	        hitMessage = ""; // Clear the message after the duration
+	    }
     }
 
     function gameLoop() {
