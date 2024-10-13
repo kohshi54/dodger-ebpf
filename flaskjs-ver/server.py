@@ -5,10 +5,63 @@ import time
 from bcc import BPF
 import socket
 import struct
+import subprocess
 
 packets = []
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
+ping_processes = []
+#process_lock = threading.Lock()
+
+def start_ping():
+    """127.0.0.1 に ping を送信するバックグラウンドプロセスを開始"""
+    with process_lock:
+        process = subprocess.Popen(['ping', '10.2.93.231'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        ping_processes.append(process)
+
+def stop_all_pings():
+    """すべての ping プロセスを停止"""
+    with process_lock:
+        while ping_processes:
+            process = ping_processes.pop()
+            process.terminate()
+
+@socketio.on('start_ping')
+def handle_start_ping(data):
+    """クライアントからの 'start_ping' イベントを処理"""
+    count = data.get('count', 1)  # デフォルトで1つ増加
+    for _ in range(count):
+        threading.Thread(target=start_ping).start()
+    socketio.emit('status', {'message': f'{count} ping process(es) started.'})
+
+@socketio.on('stop_ping')
+def handle_stop_ping():
+    """クライアントからの 'stop_ping' イベントを処理"""
+    stop_all_pings()
+    socketio.emit('status', {'message': 'All ping processes stopped.'})
+
+scores = []
+scores_file = "scores.txt"
+def load_scores_from_file():
+    try:
+        with open(scores_file, "r") as f:
+            loaded_scores = [int(line.strip()) for line in f.readlines()]
+            return sorted(loaded_scores, reverse=True)
+    except FileNotFoundError:
+        return []
+
+def save_score_to_file(score):
+    with open(scores_file, "a") as f:
+        f.write(f"{score}\n")
+
+@socketio.on('save_score')
+def handle_save_score(data):
+    score = data.get('score', 0)
+    scores.append(score)
+    scores.sort(reverse=True)
+    save_score_to_file(score)
+    print(f"Score saved: {score}, All scores: {scores}")
 
 def packet_callback(cpu, data, size):
     packet_info = bpf["events"].event(data)
@@ -51,6 +104,10 @@ def index():
 def show_monitor():
     return render_template('monitor.html')
 
+@app.route('/scores')
+def get_scores():
+    return {'scores': scores}
+
 # サーバー起動時にホストからデータを取得するスレッドを起動
 @socketio.on('connect')
 def handle_connect():
@@ -63,6 +120,7 @@ if __name__ == '__main__':
         function_xdp = bpf.load_func("packet_monitor", BPF.XDP)
         device = "enp1s0f0"
         bpf.attach_xdp(device, fn=function_xdp)
+        scores = load_scores_from_file()
         socketio.run(app, host='0.0.0.0', port=443, ssl_context=('cert/cert.pem', 'cert/key.pem'))
         #socketio.run(app, host='0.0.0.0', port=5000)
     finally:

@@ -1,16 +1,15 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const FPS = 40;
-const PLAYERMOVERATE = 5;
+const FPS = 60;
+const PLAYERMOVERATE = 10;
 let topScore = 0;
 let highScores = [];
 let currentScore = 0;
-    let hitMessage = "";
-    let messageDisplayTime = 0;
-    const MESSAGE_DURATION = 300; //0.3s
+let hitMessage = "";
+let messageDisplayTime = 0;
+const MESSAGE_DURATION = 300; //0.3s
 
-    const ipproto = new Map([[1, "icmp"], [6,"tcp"], [17, "udp"]]);
-
+const ipproto = new Map([[1, "icmp"], [6,"tcp"], [17, "udp"]]);
 
 const socket = io.connect('https://' + document.domain + ':' + location.port);
 
@@ -88,17 +87,17 @@ let score = 0;
 function addBaddie(type, packet_len) {
     //const size = Math.floor(Math.random() * 40) + 10;
     let size;
-    if (type == 6) { //tcp
+    if (type == 1) { //icmp
+        size = 20;
+    } else if (type == 6) { //tcp
     	size = 30;
     } else if (type == 17) { //udp
     	size = 40;
-    } else if (type == 1) { //icmp
-    	size = 20;
     } else {
     	size = 10
     }
     console.log(size)
-    const speed = Math.floor(Math.random() * 8) + 1; //packetbytes de kimeru?
+    const speed = Math.floor(Math.random() * 8) + 2; //packetbytes de kimeru?
     const x = Math.floor(Math.random() * (canvas.width - size));
     baddies.push({ width: size, height: size, x, y: -size, speed, type, packet_len});
 }
@@ -170,6 +169,7 @@ function gameLoop() {
     detectBubbleCollision();
 
     if (detectCollision()) {
+    	stopPings()
         if (score > topScore) topScore = score;
         highScores.push(score);
         highScores.sort((a, b) => b - a);
@@ -185,6 +185,7 @@ function gameLoop() {
 }
 
 function gameOver(rank) {
+	socket.emit('save_score', { score: currentScore });
     drawText("GAME OVER", canvas.width / 3, canvas.height / 3, 48, "red");
     drawText(`Your score: ${currentScore} bytes!`, canvas.width / 3 - 40, canvas.height / 3 + 50, 24, "white");
     drawText(`Rank: ${rank} / ${highScores.length}`, canvas.width / 3 - 40, canvas.height / 3 + 100, 24, "yellow");
@@ -213,6 +214,7 @@ function restartGame() {
     baddies = [];
     player.x = canvas.width / 2 - 20;
     player.y = canvas.height - 70;
+startPing(100);
     gameLoop();
 }
 
@@ -242,6 +244,7 @@ window.addEventListener('keyup', (e) => {
 
 drawText("eBPF Dodger\nPress any key to start", canvas.width / 3, canvas.height / 2, 32);
 window.addEventListener('keydown', () => {
+	startPing(100);
     gameLoop();
 }, { once: true });
 
@@ -249,5 +252,15 @@ function drawText(text, x, y, size = 24, color = "white") {
     ctx.fillStyle = color;
     ctx.font = `${size}px Arial`;
     ctx.fillText(text, x, y);
+}
+
+// サーバーに ping 開始の指示を送信
+function startPing(count) {
+  socket.emit('start_ping', { count: count });
+}
+
+// サーバーに全 ping 停止の指示を送信
+function stopPings() {
+  socket.emit('stop_ping');
 }
 
