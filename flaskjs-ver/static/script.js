@@ -9,6 +9,8 @@ let hitMessage = "";
 let messageDisplayTime = 0;
 const MESSAGE_DURATION = 300; //0.3s
 
+let gameState = "preview";
+
 const ipproto = new Map([[1, "icmp"], [6,"tcp"], [17, "udp"]]);
 
 const socket = io.connect('https://' + document.domain + ':' + location.port);
@@ -113,15 +115,19 @@ function moveBaddies() {
     for (let i = 0; i < baddies.length; i++) {
         baddies[i].y += baddies[i].speed;
     }
+if (gameState === "playing") {
     offscreenbaddies = baddies.filter(b => b.y > canvas.height);
     for (let i = 0; i < offscreenbaddies.length; i++) {
     	console.log(offscreenbaddies[i].packet_len);
     	score += offscreenbaddies[i].packet_len;
     }
+}
     baddies = baddies.filter(b => b.y < canvas.height);
 }
 
 function detectCollision() {
+if (gameState !== "playing")
+	return false;
     for (let i = 0; i < baddies.length; i++) {
         if (player.x < baddies[i].x + baddies[i].width &&
             player.x + player.width > baddies[i].x &&
@@ -151,6 +157,17 @@ function draw() {
     ctx.font = "24px Arial";
     ctx.fillText(`Score: ${score}`, 10, 30);
     ctx.fillText(`Top Score: ${topScore}`, 10, 60);
+    ctx.font = "18px Arial";
+    ctx.fillText(`shoot = space key`, 10, 90);
+    ctx.fillText(`move = arrow key`, 10, 120);
+
+if (gameState === "preview") {
+    ctx.fillStyle = "white";
+    ctx.font = "80px Arial";
+    ctx.fillText(`eBPF Dodger Game`, 350, 200);
+    ctx.font = "40px Arial";
+    ctx.fillText(`Press key to start!`, 350, 280);
+}
 
     // Display hit message if within duration
         if (hitMessage && Date.now() - messageDisplayTime < MESSAGE_DURATION) {
@@ -209,12 +226,21 @@ function handleRestart(e) {
     }
 }
 
-function restartGame() {
+function handlePreview() {
     score = 0;
     baddies = [];
     player.x = canvas.width / 2 - 20;
     player.y = canvas.height - 70;
 startPing(100);
+	   gameState = "playing";
+    gameLoop();
+}
+
+function restartGame() {
+	gameState = "preview";
+	//alert(gameState);
+    window.addEventListener('keydown', handlePreview, { once: true });
+
     gameLoop();
 }
 
@@ -245,6 +271,8 @@ window.addEventListener('keyup', (e) => {
 drawText("eBPF Dodger\nPress any key to start", canvas.width / 3, canvas.height / 2, 32);
 window.addEventListener('keydown', () => {
 	startPing(100);
+	gameState = "playing"
+	//alert(gameState);
     gameLoop();
 }, { once: true });
 
