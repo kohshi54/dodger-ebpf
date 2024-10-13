@@ -43,6 +43,55 @@ let player = {
     moveUp: false,
     moveDown: false
 };
+
+function handleArrowPress(direction) {
+    if (gameState !== "playing") return; //preview 時は何もしない
+
+    switch (direction) {
+        case 'up':
+            player.moveUp = true;
+            break;
+        case 'down':
+            player.moveDown = true;
+            break;
+        case 'left':
+            player.moveLeft = true;
+            break;
+        case 'right':
+            player.moveRight = true;
+            break;
+    }
+}
+
+function handleArrowRelease(direction) {
+    switch (direction) {
+        case 'up':
+            player.moveUp = false;
+            break;
+        case 'down':
+            player.moveDown = false;
+            break;
+        case 'left':
+            player.moveLeft = false;
+            break;
+        case 'right':
+            player.moveRight = false;
+            break;
+    }
+}
+
+['up', 'down', 'left', 'right'].forEach((dir) => {
+    const button = document.getElementById(dir);
+
+    // ボタン押下時の処理
+    button.addEventListener('mousedown', () => handleArrowPress(dir));
+    button.addEventListener('touchstart', () => handleArrowPress(dir));
+
+    // ボタン離したときの処理
+    button.addEventListener('mouseup', () => handleArrowRelease(dir));
+    button.addEventListener('touchend', () => handleArrowRelease(dir));
+});
+
 let baddies = [];
 let score = 0;
     let bubbles = [];
@@ -105,6 +154,9 @@ function addBaddie(type, packet_len) {
 }
 
 function movePlayer() {
+	if (gameState === "preview") {
+		return;
+	}
     if (player.moveLeft && player.x > 0) player.x -= PLAYERMOVERATE;
     if (player.moveRight && player.x + player.width < canvas.width) player.x += PLAYERMOVERATE;
     if (player.moveUp && player.y > 0) player.y -= PLAYERMOVERATE;
