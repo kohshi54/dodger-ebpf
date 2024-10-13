@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 	<script src="//cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
 	<meta charset="UTF-8">
@@ -9,6 +9,12 @@
 		body {
 			font-family: Arial, sans-serif;
 			margin: 20px;
+		}
+		.table-container {
+			overflow-y: auto;
+			max-height: 600px;
+			border: 1px solid #ddd;
+			margin-top: 20px;
 		}
 		table {
 			border-collapse: collapse;
@@ -22,55 +28,64 @@
 			background-color: #f2f2f2;
 		}
 	</style>
-
 </head>
 <body>
 	<h1>WebSocket Data</h1>
 	<p id="data">Waiting for data...</p>
 
 	<h1>eBPF Packet Monitor</h1>
-	<table id="packetTable">
-		<thead>
-			<tr>
-				<th>Timestamp</th>
-				<th>Source IP</th>
-				<th>Destination IP</th>
-				<th>Type</th>
-				<th>Packet Length</th>
-			</tr>
-		</thead>
-		<tbody>
-		</tbody>
-	</table>
+	<div class="table-container" id="tableContainer">
+		<table id="packetTable">
+			<thead>
+				<tr>
+					<th>Timestamp</th>
+					<th>Source IP</th>
+					<th>Destination IP</th>
+					<th>Type</th>
+					<th>Packet Length</th>
+				</tr>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
+	</div>
 
 	<script type="text/javascript">
 		var socket = io.connect('https://' + document.domain + ':' + location.port);
+
+		function scrollToBottom() {
+			const container = document.getElementById('tableContainer');
+			container.scrollTop = container.scrollHeight;
+		}
+
 		socket.on('new_data', function(msg) {
 			console.log('Received data: ' + msg.data);
 			document.getElementById('data').innerHTML = 'New Data: ' + msg.data;
-
 		});
+
 		socket.on('packet', function(msg) {
-			const packet = msg.data
-			console.log(msg.data)
+			const packet = msg.data;
+			console.log(packet);
 			const table = document.getElementById("packetTable").getElementsByTagName("tbody")[0];
 
 			const newRow = table.insertRow();
 			newRow.insertCell(0).innerText = new Date(packet.timestamp * 1000).toLocaleTimeString();
 			newRow.insertCell(1).innerText = packet.src_ip;
 			newRow.insertCell(2).innerText = packet.dest_ip;
-			//newRow.insertCell(3).innerText = packet.type;
-			if (packet.type == 6) {
+			if (packet.type === 6) {
 				newRow.insertCell(3).innerText = "tcp";
-			} else if (packet.type == 17) {
+			} else if (packet.type === 17) {
 				newRow.insertCell(3).innerText = "udp";
-			} else if (packet.type == 1) {
+			} else if (packet.type === 1) {
 				newRow.insertCell(3).innerText = "icmp";
+			} else {
+				newRow.insertCell(3).innerText = "unknown";
 			}
 			newRow.insertCell(4).innerText = packet.packet_len;
+
+			scrollToBottom();
 		});
 	</script>
 </body>
 </html>
-
 
